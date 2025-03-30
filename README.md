@@ -22,10 +22,12 @@ plink --vcf genotype_snp.vcf \
       --keep-allele-order
 ```
 Output Files  
+```
 snp_filtered.log  
 snp_filtered.nosex  
 snp_filtered.tfam  
-snp_filtered.tped  
+snp_filtered.tped
+```
 ## Step 2: Sort Phenotype Data
 ```
 perl sort_phenotype.pl snp_filtered.tfam phenotype_data.txt > phenotype_sorted.txt
@@ -47,6 +49,38 @@ emmax-intel64 -v -d 10 \
 awk '{print $1"\t"$2"\t"$3"\t"$4"\t"}' snp_filtered.tped | \
 paste - gwas_results.ps | \
 awk 'BEGIN{print "SNP\tCHR\tBP\tP"}{if($2==$5){print $2"\t"$1"\t"$4"\t"$NF}}' > gwas_results_processed.txt
+```
+In R
+```
+# Install required R packages
+install.packages("qqman")
+install.packages("ggplot2")
+library(qqman)
+library(ggplot2)
+# Load data
+snp_res <- read.table("gwas_results_processed.txt", header=TRUE)
+# Calculate Bonferroni threshold
+total_snps <- nrow(snp_res)
+bonferroni_thresh <- 0.05 / total_snps
+cat("SNP Bonferroni threshold:", bonferroni_thresh, "\n")
+# Manhattan Plot
+png("manhattan_snp.png", width=12, height=6, units="in", res=300)
+manhattan(snp_res,
+chr="CHR",
+bp="BP",
+snp="SNP",
+p="P",
+main="SNP Manhattan Plot",
+annotatePval = bonferroni_thresh,
+annotateTop = FALSE,
+col = c("skyblue3", "deepskyblue4"),
+suggestiveline = -log10(bonferroni_thresh),
+genomewideline = -log10(1e-6))
+dev.off()
+# Q-Q Plot
+png("qqplot_snp.png", width=8, height=8, units="in", res=300)
+qq(snp_res$P, main="Q-Q Plot: SNP GWAS")
+dev.off()
 ```
 ## Step 6: SNP GWAS with Q Matrix (Population Structure as Covariate)
 ```
@@ -89,5 +123,37 @@ emmax-intel64 -v -d 10 \
 awk '{print $1"\t"$2"\t"$3"\t"$4"\t"}' indel_filtered.tped | \
 paste - gwas_results_indel.ps | \
 awk 'BEGIN{print "SNP\tCHR\tBP\tP"}{if($2==$5){print $2"\t"$1"\t"$4"\t"$NF}}' > gwas_results_indel_processed.txt
+```
+In R
+```
+library(qqman)
+library(ggplot2)
+# Load data
+indel_res <- read.table("gwas_results_indel_processed.txt", header=TRUE)
+
+# Calculate INDEL threshold
+total_indels <- nrow(indel_res)
+indel_thresh <- 0.05 / total_indels
+cat("INDEL Bonferroni threshold:", indel_thresh, "\n")
+
+# Manhattan Plot
+png("manhattan_indel.png", width=12, height=6, units="in", res=300)
+manhattan(indel_res,
+chr="CHR",
+bp="BP",
+snp="SNP",
+p="P",
+main="INDEL Manhattan Plot",
+annotatePval = indel_thresh,
+annotateTop = FALSE,
+col = c("salmon", "firebrick4"),
+suggestiveline = -log10(indel_thresh),
+genomewideline = -log10(1e-5))
+dev.off()
+
+# Q-Q Plot
+png("qqplot_indel.png", width=8, height=8, units="in", res=300)
+qq(indel_res$P, main="Q-Q Plot: INDEL GWAS")
+dev.off()
 ```
 
